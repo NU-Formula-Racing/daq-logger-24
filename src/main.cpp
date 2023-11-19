@@ -24,23 +24,23 @@
 #define save_interval 5003
 #define data_interval 500
 
-using namespace fs;
-
 // function declarations here:
-FILE open_SD_card();
+fs::File open_SD_card();
 void read_write_CAN_data();
-FILE save_SD_card();
+fs::File save_SD_card();
 
 // Timer group setup in global scope
 VirtualTimerGroup data_timers; // executing data functions on timer
-data_timers.AddTimer(save_interval, save_SD_card);
-data_timers.AddTimer(data_interval, read_write_CAN_data);
+fs::File data_timers.AddTimer(save_interval, save_SD_card);
+void data_timers.AddTimer(data_interval, read_write_CAN_data);
+
+// Setup the SD card file
+fs::File file = open_SD_card();
 
 // setup function for logger:
 void setup() {
   int n = 0; // number of card saves, global
   Serial.begin(9600);
-  FILE file = open_SD_card();
   // if (!file) {
   //   Serial.println("Error opening file.");
   // }
@@ -53,15 +53,15 @@ void loop() {
 }
 
 // // function definitions used:
-FILE open_SD_card() {
+fs::File open_SD_card() {
   if (SD.begin(SD_CS)) {
     Serial.println("SD Card detected successfully.");
   } else {
     Serial.println("SD Card not detected.");
   }
   // creating/opening a file on the SD card
-  FILE file = SD.open("logger.txt", FILE_WRITE);
-  return file
+  fs::File file = SD.open("logger.txt", FILE_WRITE);
+  return file;
 }
 
 void read_write_CAN_data() {
@@ -69,11 +69,11 @@ void read_write_CAN_data() {
   file.println("Hello logger!");
 }
 
-FILE save_SD_card() {
+fs::File save_SD_card() {
   // close SD card to save files
   int n = n + 1;
-  SD.close();
+  file.close();
   // reopen file to keep collecting data
-  file = open_SD_card();
-  return file
+  fs::File file = open_SD_card();
+  return file;
 }
