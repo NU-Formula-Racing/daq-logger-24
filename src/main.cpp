@@ -21,26 +21,31 @@
 #define RTC_SDA 21
 #define RTC_SCL 22
 // timing intervals to collect and hard-save data:
-#define save_interval 5003
-#define data_interval 500
+#define save_interval 5003U
+#define data_interval 500U
+
+using namespace fs;
 
 // function declarations here:
 fs::File open_SD_card();
-void read_write_CAN_data();
-fs::File save_SD_card();
+void read_write_CAN_data(fs::File file);
+fs::File save_SD_card(fs::File file);
 
 // Timer group setup in global scope
-VirtualTimerGroup data_timers; // executing data functions on timer
-fs::File data_timers.AddTimer(save_interval, save_SD_card);
-void data_timers.AddTimer(data_interval, read_write_CAN_data);
+float save_start = 0;
+float read_start = 0;
+// VirtualTimerGroup data_timers; // executing data functions on timer
+// VirtualTimerGroup data_timers.AddTimer(save_interval, save_SD_card, VirtualTimer::Type::kRepeating);
+// VirtualTimerGroup data_timers.AddTimer(data_interval, read_write_CAN_data, VirtualTimer::Type::kRepeating);
 
 // Setup the SD card file
-fs::File file = open_SD_card();
+fs::File file;
 
 // setup function for logger:
 void setup() {
   int n = 0; // number of card saves, global
   Serial.begin(9600);
+  file = open_SD_card();
   // if (!file) {
   //   Serial.println("Error opening file.");
   // }
@@ -49,7 +54,17 @@ void setup() {
 
 // logger looping code (just Tick since timers and functions already established):
 void loop() {
-  data_timers.Tick(millis());
+  float save_time = millis() - save_start;
+  float read_time = millis() - read_start;
+  //data_timers.Tick(millis());
+  if (save_time > save_interval) {
+    file = save_SD_card(file);
+    save_start = millis();
+    save_time = 0;
+  }
+  if (read_time > data_interval) {
+    read_write_CAN_data(file);
+  }
 }
 
 // // function definitions used:
@@ -60,20 +75,20 @@ fs::File open_SD_card() {
     Serial.println("SD Card not detected.");
   }
   // creating/opening a file on the SD card
-  fs::File file = SD.open("logger.txt", FILE_WRITE);
+  file = SD.open("logger.txt", FILE_WRITE);
   return file;
 }
 
-void read_write_CAN_data() {
+void read_write_CAN_data(fs::File file) {
   // in progress, currently testing
   file.println("Hello logger!");
 }
 
-fs::File save_SD_card() {
+fs::File save_SD_card(fs::File file) {
   // close SD card to save files
   int n = n + 1;
   file.close();
   // reopen file to keep collecting data
-  fs::File file = open_SD_card();
+  file = open_SD_card();
   return file;
 }
