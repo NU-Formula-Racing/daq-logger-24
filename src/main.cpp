@@ -6,7 +6,20 @@
 #include <SPI.h>
 #include <SD.h>
 #include <virtualTimer.h>
-#include <can_interface.h>
+#include <CAN.h>
+
+// CAN Setup
+#if defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY41)
+#include "teensy_can.h"
+// The bus number is a template argument for Teensy: TeensyCAN<bus_num>
+TeensyCAN<1> can_bus{};
+#endif
+
+#ifdef ARDUINO_ARCH_ESP32
+#include "esp_can.h"
+// The tx and rx pins are constructor arguments to ESPCan, which default to TX = 5, RX = 4
+ESPCAN can_bus{};
+#endif
 
 // defined constants (pins from Zach's NFR23 board):
 #define CAN_TX 34
@@ -47,9 +60,9 @@ void setup() {
   int n = 0; // number of card saves, global
   Serial.begin(9600);
   file = open_SD_card();
-  // if (!file) {
-  //   Serial.println("Error opening file.");
-  // }
+  if (!file) {
+    Serial.println("Error opening file.");
+  }
   Serial.println("Setup complete.");
 }
 
@@ -88,7 +101,6 @@ fs::File open_SD_card() {
 void read_write_CAN_data(fs::File file) {
   // in progress, currently testing
   file.println("Hello logger!");
-
 }
 
 fs::File save_SD_card(fs::File file) {
