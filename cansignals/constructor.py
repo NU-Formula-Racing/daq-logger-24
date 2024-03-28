@@ -7,7 +7,7 @@
 # CSV FILE
 # Format your CAN DBC .csv file columns and values to match this example:
 # Message ID, Message Name,   Sender,  Signal Name, Start Bit, Size, Factor, Offset, Min, Max, Unit, Cycle Time, TXRX
-# 200,        BMS_Voltages_0, ['BMS'], Cell_V_0,    0,         8,    0.012,  2,      ,    ,    V,    100,         TX
+# 200,        BMS_Voltages_0, ['BMS'], Cell_V_0,    0,         8,    0.012,  2,      ,    ,    V,    100,        TX
 
 # Imported Libraries, py -m pip install <library> in VSCode terminal
 import pandas as pd
