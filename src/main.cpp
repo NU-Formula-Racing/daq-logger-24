@@ -50,7 +50,7 @@ void setup() {
     Serial.println("Error opening file.");
   }
   daqser::initialize();
-  daqser::setSchema(ask evan);
+  daqser::setSchema("", , );
 
   rtc.begin();
   rtc.start();
