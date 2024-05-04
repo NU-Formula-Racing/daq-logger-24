@@ -7,7 +7,7 @@
 #include <SD.h>
 #include <virtualTimer.h>
 #include "esp_can.h"
-#include "daqser.h"
+// #include <daqser.h>
 #include "RTClib.h"
 
 // The tx and rx pins are constructor arguments to ESPCan, which default to TX = 5, RX = 4
@@ -26,8 +26,9 @@ RTC_PCF8523 rtc;
 // function declarations here:
 fs::File init_SD_card();
 fs::File open_SD_card();
-void read_write_CAN_data(fs::File file, unsigned long time);
-fs::File save_SD_card(fs::File file);
+void read_write_CAN_data();
+fs::File save_SD_card();
+std::string rtc_get_time();
 
 // Timer group setup in global scope
 float save_start = 0;
@@ -49,8 +50,8 @@ void setup() {
   if (!file) {
     Serial.println("Error opening file.");
   }
-  daqser::initialize();
-  daqser::setSchema("", , );
+  // daqser::initialize();
+  // daqser::setSchema("", , );
 
   rtc.begin();
   rtc.start();
@@ -63,8 +64,8 @@ void setup() {
 
 // logger looping code (just Tick since timers and functions already established):
 void loop() {
-  data_timers.Tick();
-  save_SD.Tick();
+  data_timers.Tick(millis());
+  save_SD.Tick(millis());
 }
 
 // // function definitions used:
@@ -87,18 +88,19 @@ fs::File open_SD_card() {
   return file;
 }
 
-void read_write_CAN_data(fs::File file, unsigned long time) {
-  daqser::updateSignals(boards);
-  vector<uint8_t> data = daqser::serializeFrame();
-  now = rtc.now();
+void read_write_CAN_data() {
+  // daqser::updateSignals(boards);
+  // std::vector<uint8_t> data = daqser::serializeFrame();
+  std::vector<uint8_t> data;
+  DateTime now = rtc.now();
   file.printf("%s,", now.timestamp());
   for (auto & d : data) {
-    file.printf("%d," d);
+    file.printf("%d,", d);
   }
   file.printf("\n");
 }
 
-void save_SD_card(fs::File file) {
+void save_SD_card() {
   // close SD card to save files
   file.close();
   return;
