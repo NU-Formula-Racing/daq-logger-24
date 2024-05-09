@@ -7,7 +7,7 @@
 #include <SD.h>
 #include <virtualTimer.h>
 #include "esp_can.h"
-// #include <daqser.h>
+#include <daqser.hpp>
 #include "RTClib.h"
 
 // The tx and rx pins are constructor arguments to ESPCan, which default to TX = 5, RX = 4
@@ -27,7 +27,7 @@ RTC_PCF8523 rtc;
 fs::File init_SD_card();
 fs::File open_SD_card();
 void read_write_CAN_data();
-fs::File save_SD_card();
+void save_SD_card();
 std::string rtc_get_time();
 
 // Timer group setup in global scope
@@ -53,7 +53,7 @@ void setup() {
   // daqser::initialize();
   // daqser::setSchema("", , );
 
-  rtc.begin();
+  while(!rtc.begin()) {;}
   rtc.start();
 
   data_timers.AddTimer(100U, read_write_CAN_data);
@@ -91,6 +91,7 @@ fs::File open_SD_card() {
 void read_write_CAN_data() {
   // daqser::updateSignals(boards);
   // std::vector<uint8_t> data = daqser::serializeFrame();
+  fs::File file = open_SD_card();
   std::vector<uint8_t> data;
   DateTime now = rtc.now();
   file.printf("%s,", now.timestamp());
