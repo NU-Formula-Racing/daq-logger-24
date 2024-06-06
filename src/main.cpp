@@ -7,8 +7,16 @@
 #include <SD.h>
 #include <virtualTimer.h>
 #include "esp_can.h"
-#include <daqser.hpp>
 #include "RTClib.h"
+
+// DAQ Serialization Library Initializations
+#include <daqser.hpp>
+#include <daqser_can.hpp>
+
+#define VERSION_ARGS(major, minor, patch) major, minor, patch
+
+#define SCHEMA_NAME "esp32dev_test"
+#define SCHEMA_VERSION VERSION_ARGS(1, 0, 0)
 
 // The tx and rx pins are constructor arguments to ESPCan, which default to TX = 5, RX = 4
 ESPCAN can_bus{};
@@ -17,10 +25,7 @@ ESPCAN can_bus{};
 #define CS 5
 #define BAUD_1M 1000000
 // timing intervals to collect and hard-save data:
-#define save_interval 5003
-#define data_interval 500
 
-// using namespace fs;
 RTC_PCF8523 rtc;
 
 // function declarations here:
@@ -31,17 +36,13 @@ void save_SD_card();
 std::string rtc_get_time();
 
 // Timer group setup in global scope
-float save_start = 0;
-float read_start = 0;
-VirtualTimerGroup data_timers; // executing data functions on timer
-VirtualTimerGroup save_SD;
+VirtualTimerGroup logger_timers; // executing data functions on timer
 
 // Setup the SD card file
 fs::File file;
 
 // setup function for logger:
 void setup() {
-  int n = 0; // number of card saves, global
   Serial.begin(96000);
   while (!Serial) {
     Serial.println("Connecting Serial..."); // wait for serial port to connect. Needed for native USB port only
@@ -50,25 +51,31 @@ void setup() {
   if (!file) {
     Serial.println("Error opening file.");
   }
-  // daqser::initialize();
-  // daqser::setSchema("", , );
 
   while(!rtc.begin()) {;}
   rtc.start();
 
-  data_timers.AddTimer(100U, read_write_CAN_data);
-  save_SD.AddTimer(5000U, save_SD_card);
+  daqser::initialize();
+  // Tell daqser what schema we are using to serialize the data
+  daqser::setSchema(SCHEMA_NAME, SCHEMA_VERSION);
+  daqser::g_canBus.Initialize(ICAN::BaudRate::kBaud1M);
+  // Tell daqser to record/send data from these boards
+  
+  daqser::initializeCAN();
+
+  logger_timers.AddTimer(100U, read_write_CAN_data);
+  logger_timers.AddTimer(5000U, save_SD_card);
 
   Serial.println("Setup complete.");
 }
 
 // logger looping code (just Tick since timers and functions already established):
 void loop() {
-  data_timers.Tick(millis());
-  save_SD.Tick(millis());
+  logger_timers.Tick(millis());
+  daqser::tickCAN();
 }
 
-// // function definitions used:
+// function definitions used:
 fs::File init_SD_card() {
   SPI.begin(18, 19, 23, CS);
   SPI.setDataMode(SPI_MODE0);
@@ -89,15 +96,12 @@ fs::File open_SD_card() {
 }
 
 void read_write_CAN_data() {
-  // daqser::updateSignals(boards);
-  // std::vector<uint8_t> data = daqser::serializeFrame();
   fs::File file = open_SD_card();
-  std::vector<uint8_t> data;
   DateTime now = rtc.now();
   file.printf("%s,", now.timestamp());
-  for (auto & d : data) {
-    file.printf("%d,", d);
-  }
+
+  daqser::updateSignals();
+
   file.printf("\n");
 }
 
