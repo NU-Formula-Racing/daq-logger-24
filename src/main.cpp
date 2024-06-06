@@ -33,17 +33,17 @@ fs::File init_SD_card();
 fs::File open_SD_card();
 void read_write_CAN_data();
 void save_SD_card();
-std::string rtc_get_time();
 
 // Timer group setup in global scope
 VirtualTimerGroup logger_timers; // executing data functions on timer
 
 // Setup the SD card file
 fs::File file;
+std::string filename;
 
 // setup function for logger:
 void setup() {
-  Serial.begin(96000);
+  Serial.begin(9600);
   while (!Serial) {
     Serial.println("Connecting Serial..."); // wait for serial port to connect. Needed for native USB port only
   }
@@ -54,6 +54,16 @@ void setup() {
 
   while(!rtc.begin()) {;}
   rtc.start();
+  DateTime now = rtc.now();
+  std::string timestamp = String(now.year()).c_str();
+  timestamp = timestamp + "_" + String(now.month()).c_str() + "_";
+  timestamp = timestamp + String(now.day()).c_str() + "_";
+  timestamp = timestamp + String(now.hour()).c_str() + "_";
+  timestamp = timestamp + String(now.minute()).c_str() + "_";
+  timestamp = timestamp + String(now.second()).c_str();
+  filename = "/" + timestamp;
+  filename = filename + ".txt";
+  Serial.printf("FILENAME: %s\n", filename);
 
   daqser::initialize();
   // Tell daqser what schema we are using to serialize the data
@@ -63,8 +73,8 @@ void setup() {
   
   daqser::initializeCAN();
 
-  logger_timers.AddTimer(100U, read_write_CAN_data);
-  logger_timers.AddTimer(5000U, save_SD_card);
+  logger_timers.AddTimer(200U, read_write_CAN_data);
+  // logger_timers.AddTimer(5000U, save_SD_card);
 
   Serial.println("Setup complete.");
 }
@@ -91,7 +101,7 @@ fs::File init_SD_card() {
 }
 
 fs::File open_SD_card() {
-  file = SD.open("/data.txt", "a");
+  file = SD.open(filename.c_str(), "a");
   return file;
 }
 
@@ -99,10 +109,17 @@ void read_write_CAN_data() {
   fs::File file = open_SD_card();
   DateTime now = rtc.now();
   file.printf("%s,", now.timestamp());
-
   daqser::updateSignals();
-
-  file.printf("\n");
+  std::vector<std::uint8_t> byteData = daqser::serializeFrame();
+  // send the data over lora or something
+  // send(byteData);
+  // print out the bytes
+  std::cout << "Data(length:" << byteData.size() << "): ";
+  for (std::uint8_t byte : byteData)
+  {
+    file.print(byte);
+  }
+  file.println();
 }
 
 void save_SD_card() {
